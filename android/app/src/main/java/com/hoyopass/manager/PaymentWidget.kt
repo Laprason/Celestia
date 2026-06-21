@@ -53,7 +53,7 @@ class PaymentWidgetReceiver : GlanceAppWidgetReceiver() {
 
 @Composable
 private fun WidgetContent(data: AppData) {
-    val today = LocalDate.now()
+    val today = logicalToday()
     val events = data.paymentEvents(today, 6)
     val total6 = events.sumOf { it.amount }
     val shown = events.take(5)

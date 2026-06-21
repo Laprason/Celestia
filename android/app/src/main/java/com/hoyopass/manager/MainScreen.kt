@@ -421,7 +421,7 @@ private fun TierChip(modifier: Modifier, name: String, price: String, selected: 
 
 @Composable
 private fun CalendarView(data: AppData, modifier: Modifier) {
-    val today = LocalDate.now()
+    val today = logicalToday()
     val events = remember(data) { data.paymentEvents(today) }
     val byDay = remember(events) { events.groupBy { it.date } }
     var ym by remember { mutableStateOf(YearMonth.from(today)) }

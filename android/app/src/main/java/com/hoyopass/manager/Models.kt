@@ -2,7 +2,17 @@ package com.hoyopass.manager
 
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
+
+/** 残り日数の切り替わり時刻（午前5時）。これより前は前日扱い。 */
+const val DAY_ROLLOVER_HOUR = 5
+
+/** 5時境界を適用した「論理的な今日」。 */
+fun logicalToday(): LocalDate {
+    val now = LocalDateTime.now()
+    return if (now.hour < DAY_ROLLOVER_HOUR) now.toLocalDate().minusDays(1) else now.toLocalDate()
+}
 
 enum class PassType { MONTHLY, SEASON }
 
@@ -101,7 +111,7 @@ data class Remaining(
     val percentLeft: Float,
 )
 
-fun PassEntry.remaining(today: LocalDate = LocalDate.now()): Remaining {
+fun PassEntry.remaining(today: LocalDate = logicalToday()): Remaining {
     if (type == PassType.SEASON) {
         // 次回アップデート日までのカウントダウン。過ぎたら周期分だけ自動で次回へ繰り上げ。
         var next = LocalDate.parse(startDate)
@@ -138,7 +148,7 @@ data class PaymentEvent(
  * 月パス＝期限(購入+日数)ごと、シーズン＝アップデート日(周期)ごと。
  */
 fun AppData.paymentEvents(
-    today: LocalDate = LocalDate.now(),
+    today: LocalDate = logicalToday(),
     monthsAhead: Long = 24,
 ): List<PaymentEvent> {
     val horizon = today.plusMonths(monthsAhead)

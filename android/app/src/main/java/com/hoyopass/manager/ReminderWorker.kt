@@ -19,7 +19,7 @@ class ReminderWorker(
     override suspend fun doWork(): Result {
         val repo = PassRepository(applicationContext)
         val data = repo.snapshot()
-        val today = LocalDate.now()
+        val today = logicalToday()
 
         data.passes.values.forEach { entry ->
             val rem = entry.remaining(today)

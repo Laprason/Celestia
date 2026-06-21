@@ -173,6 +173,8 @@
 <script>
 const DAY = 86400000;
 const todayMid = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
+const ROLLOVER_HOUR = 5; // 残り日数の切り替わり時刻（午前5時）
+const logicalToday = () => { const d=new Date(); if(d.getHours()<ROLLOVER_HOUR) d.setDate(d.getDate()-1); d.setHours(0,0,0,0); return d; };
 const fmt = d => `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
 const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const parse = s => { const [y,m,dd]=s.split('-').map(Number); const d=new Date(y,m-1,dd); d.setHours(0,0,0,0); return d; };
@@ -234,7 +236,7 @@ function getPass(gid,t){ return state.passes[passKey(gid,t)]; }
 
 function remainInfo(p,type){
   if(!p) return {state:'none'};
-  const cycle=p.days, today=todayMid();
+  const cycle=p.days, today=logicalToday();
   if(type==='month'){
     // 購入日 → 期限（残りが減ったら更新）
     const start=parse(p.date);
@@ -283,7 +285,7 @@ const yen = n => '¥'+Number(n).toLocaleString('ja-JP');
 
 // 今日〜monthsAhead先までに必要な課金イベントを生成
 function paymentEvents(monthsAhead){
-  const today=todayMid();
+  const today=logicalToday();
   const horizon=new Date(today); horizon.setMonth(horizon.getMonth()+monthsAhead);
   const events=[];
   GAMES.forEach(g=>{
@@ -306,7 +308,7 @@ function paymentEvents(monthsAhead){
 
 let calY, calM; // 表示中の年・月
 function renderCalendar(){
-  const today=todayMid();
+  const today=logicalToday();
   if(calY===undefined){ calY=today.getFullYear(); calM=today.getMonth(); }
   const events=paymentEvents(24);
   const byDay={};
@@ -509,7 +511,7 @@ document.getElementById('btnNotify').onclick=async()=>{
 };
 function checkNotify(force){
   if(!('Notification'in window)||Notification.permission!=='granted') return;
-  const todayStr=iso(todayMid());
+  const todayStr=iso(logicalToday());
   GAMES.forEach(g=>{
     ['month','season'].forEach(t=>{
       const p=getPass(g.id,t); if(!p) return;
