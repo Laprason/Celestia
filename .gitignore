@@ -1,0 +1,30 @@
+# --- Android / Gradle ---
+.gradle/
+build/
+captures/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.hprof
+
+# Keep the Gradle wrapper jar (needed to build)
+!gradle/wrapper/gradle-wrapper.jar
+
+# --- Android Studio / IntelliJ ---
+.idea/
+*.iml
+
+# --- Editor / tooling ---
+.vscode/
+.claude/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs / misc ---
+*.log
+node_modules/

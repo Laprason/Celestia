@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1226">
+<title>Celestia — HoYoパス管理</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%236F7BFF'/%3E%3Cpath%20d='M40%2018a16%2016%200%201%200%200%2028%2013%2013%200%201%201%200-28z'%20fill='%23fff'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0f1226; --bg2:#171a35; --card:#1e2243; --card2:#262b54;
+    --line:#33396b; --text:#eef0ff; --sub:#9aa0d4; --accent:#6f7bff;
+    --ok:#36d399; --warn:#fbbd23; --danger:#f87272; --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic UI",sans-serif;
+    background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);
+    min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  header{position:sticky;top:0;z-index:5;backdrop-filter:blur(10px);
+    background:rgba(15,18,38,.82);border-bottom:1px solid var(--line);padding:14px 16px}
+  header h1{margin:0;font-size:18px;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+  header h1 small{font-size:11px;color:var(--sub);font-weight:400}
+  .wrap{max-width:680px;margin:0 auto;padding:16px}
+  .row{display:flex;gap:8px;align-items:center}
+  .btn{border:1px solid var(--line);background:var(--card2);color:var(--text);
+    padding:9px 12px;border-radius:12px;font-size:13px;cursor:pointer;transition:.15s;font-weight:600}
+  .btn:hover{filter:brightness(1.15)} .btn:active{transform:scale(.97)}
+  .btn.primary{background:var(--accent);border-color:var(--accent)}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:6px 10px;font-size:12px;border-radius:10px}
+  .bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px;margin-bottom:14px;overflow:hidden}
+  .game-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+  .badge{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+    font-weight:800;font-size:15px;color:#fff;flex:none;object-fit:cover}
+  .game-head .name{font-weight:700;font-size:15px}
+  .game-head .sub{font-size:11px;color:var(--sub)}
+  .pass{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .pass:first-of-type{border-top:1px solid transparent}
+  .pass .meta{flex:1;min-width:0}
+  .pass .ptype{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+  .pass .pdate{font-size:11px;color:var(--sub);margin-top:3px}
+  .pill{font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700;flex:none}
+  .pill.month{background:rgba(111,123,255,.18);color:#aeb6ff}
+  .pill.season{background:rgba(54,211,153,.16);color:#7df0c4}
+  .days{text-align:right;flex:none;min-width:78px}
+  .days .n{font-size:22px;font-weight:800;line-height:1}
+  .days .u{font-size:10px;color:var(--sub)}
+  .s-ok .n{color:var(--ok)} .s-warn .n{color:var(--warn)} .s-danger .n{color:var(--danger)}
+  .s-none .n{color:var(--sub);font-size:14px;font-weight:600}
+  .progress{height:5px;border-radius:99px;background:var(--card2);margin-top:8px;overflow:hidden}
+  .progress > i{display:block;height:100%;border-radius:99px;transition:width .4s}
+  .actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .empty{color:var(--sub);text-align:center;padding:40px 0;font-size:13px}
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(6,8,20,.6);display:none;align-items:flex-end;
+    justify-content:center;z-index:50;backdrop-filter:blur(2px)}
+  .modal.open{display:flex}
+  .sheet{background:var(--bg2);border:1px solid var(--line);border-bottom:none;
+    border-radius:20px 20px 0 0;width:100%;max-width:680px;padding:18px 16px 26px;animation:up .22s ease}
+  @keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+  .sheet h3{margin:2px 0 14px}
+  label{display:block;font-size:12px;color:var(--sub);margin:12px 0 5px}
+  input,select{width:100%;background:var(--card);border:1px solid var(--line);color:var(--text);
+    padding:11px;border-radius:12px;font-size:15px;font-family:inherit}
+  input[type=date]{min-height:46px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .hint{font-size:11px;color:var(--sub);margin-top:6px;line-height:1.5}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(20px);
+    background:var(--card2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;
+    font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
+  .toast.show{opacity:1;transform:translateX(-50%)}
+  .note{font-size:11px;color:var(--sub);line-height:1.6;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:6px}
+  /* calendar */
+  .cal-sum{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:11px 13px;margin-bottom:12px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .cal-sum b{font-size:17px;color:var(--accent)}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .cal-head .mtitle{font-weight:700;font-size:16px}
+  .cal-head .mtot{font-size:12px;color:var(--sub)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-dow{text-align:center;font-size:11px;color:var(--sub);padding:3px 0}
+  .cal-dow.sun{color:#f87272}.cal-dow.sat{color:#7db4ff}
+  .cal-cell{min-height:52px;border:1px solid var(--line);border-radius:8px;padding:3px 4px;
+    background:var(--card);display:flex;flex-direction:column;gap:2px}
+  .cal-cell.empty{background:transparent;border-color:transparent}
+  .cal-cell.has{background:var(--card2);border-color:var(--accent)}
+  .cal-cell.today .cal-d{color:var(--accent);font-weight:800}
+  .cal-d{font-size:11px;color:var(--sub)}
+  .cal-dots{display:flex;gap:2px;flex-wrap:wrap}
+  .cal-dot{width:7px;height:7px;border-radius:99px;display:inline-block}
+  .cal-amt{font-size:9px;font-weight:700;color:var(--text);margin-top:auto;letter-spacing:-.02em}
+  .cal-list{margin-top:16px}
+  .cal-evt{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid var(--line);font-size:13px}
+  .cal-evt .edot{width:9px;height:9px;border-radius:99px;flex:none}
+  .cal-evt .ed{color:var(--sub);width:50px;flex:none;font-size:12px}
+  .cal-evt .enm{flex:1;min-width:0}
+  .cal-evt .epill{font-size:9px;padding:1px 6px;border-radius:99px;color:var(--sub);border:1px solid var(--line)}
+  .cal-evt .eamt{font-weight:700}
+  .cal-mtot{display:flex;justify-content:space-between;margin-top:12px;padding-top:11px;
+    border-top:2px solid var(--line);font-weight:700;font-size:15px}
+  .cal-empty{color:var(--sub);text-align:center;padding:24px 0;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding:0">
+    <h1>🌙 Celestia <small id="todayLabel"></small></h1>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <button class="btn" id="btnView">📅 カレンダー</button>
+    <button class="btn primary" id="btnNotify">🔔 通知を有効化</button>
+    <button class="btn ghost" id="btnSettings">⚙️ 設定</button>
+    <button class="btn ghost" id="btnExport">⬇︎ バックアップ</button>
+    <button class="btn ghost" id="btnImport">⬆︎ 復元</button>
+  </div>
+
+  <div id="list"></div>
+  <div id="calView" style="display:none"></div>
+
+  <div class="note" id="warnNote" style="display:none"></div>
+</div>
+
+<!-- 編集シート -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h3 id="mTitle">パスを編集</h3>
+    <label id="lblDate">購入日（開始日）</label>
+    <input type="date" id="mDate">
+    <div class="grid2">
+      <div>
+        <label id="lblDays">有効期間（日数）</label>
+        <input type="number" id="mDays" min="1" max="120">
+      </div>
+      <div>
+        <label id="lblExpiry">期限日（自動計算）</label>
+        <input type="date" id="mExpiry" readonly>
+      </div>
+    </div>
+    <div class="hint" id="mHint"></div>
+    <div class="row" style="margin-top:18px;gap:8px">
+      <button class="btn primary" id="mSave" style="flex:1">保存</button>
+      <button class="btn ghost" id="mClear">登録を削除</button>
+      <button class="btn ghost" id="mCancel">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 設定シート -->
+<div class="modal" id="settings">
+  <div class="sheet">
+    <h3>⚙️ 設定</h3>
+    <label>通知タイミング（期限の何日前から）</label>
+    <input type="number" id="sLead" min="0" max="14" value="3">
+    <div id="priceEdits"></div>
+    <div id="urlEdits"></div>
+    <div class="note">通知はこのページ（PWA）を開いた時、および開いている間に判定されます。<b>確実なバックグラウンド通知が必要な場合はネイティブAndroid版</b>をご利用ください。</div>
+    <div class="row" style="margin-top:16px;gap:8px">
+      <button class="btn primary" id="sSave" style="flex:1">保存</button>
+      <button class="btn ghost" id="sCancel">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileIn" accept="application/json" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+const DAY = 86400000;
+const todayMid = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
+const fmt = d => `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const parse = s => { const [y,m,dd]=s.split('-').map(Number); const d=new Date(y,m-1,dd); d.setHours(0,0,0,0); return d; };
+
+// ゲーム定義（top-up URLは設定で変更可）
+const GAMES = [
+  { id:'genshin', name:'原神', sub:'Genshin Impact', color:'#3b6fe0',
+    iconUrl:'https://play-lh.googleusercontent.com/YQqyKaXX-63krqsfIzUEJWUWLINxcb5tbS6QVySdxbS7eZV7YB2dUjUvX27xA0TIGtfxQ5v-tQjwlT5tTB-O=s144',
+    month:'空月の祝福', season:'紀行', seasonDays:42, seasonAnchor:'2026-07-01',
+    monthPrice:610, seasonStdName:'精緻な紀行', seasonStdPrice:1220, seasonPremiumName:'華麗な紀行', seasonPremiumPrice:2440,
+    url:'https://sdk.hoyoverse.com/payment/genshin/index.html?lang=ja-jp' },
+  { id:'hsr', name:'スターレイル', sub:'Honkai: Star Rail', color:'#7c4dff',
+    iconUrl:'https://play-lh.googleusercontent.com/aWrGocSA7hEuk1qAPe7L4T57LvLKrwwH26cK2_LOqxRQMQX7j3uHYojC-EKWgYEV2PdrmE0ahqvvhLhXrAGk6Q=s144',
+    month:'列車補給標章', season:'ナナシの勲功', seasonDays:42, seasonAnchor:'2026-07-15',
+    monthPrice:610, seasonStdName:'ナナシビトの褒章', seasonStdPrice:1220, seasonPremiumName:'ナナシビトの勲章', seasonPremiumPrice:2480,
+    url:'https://sdk.hoyoverse.com/payment/hsr/index.html?lang=ja-jp' },
+  { id:'zzz', name:'ゼンレスゾーンゼロ', sub:'Zenless Zone Zero', color:'#ff7a3d',
+    iconUrl:'https://play-lh.googleusercontent.com/-ZZaqZBQ7EBjH4j0hyHX-0Fu0jUtnoOc-LwydvgQmsXWBZLxyAhxPcmIakzZB7NFurlK4Mj0pbvYe0pHYSuv4p8=s144',
+    month:'インターノット会員権', season:'エリーファンド', seasonDays:42, seasonAnchor:'2026-07-29',
+    monthPrice:610, seasonStdName:'成長プラン', seasonStdPrice:1220, seasonPremiumName:'プレミアムプラン', seasonPremiumPrice:2480,
+    url:'https://sdk.hoyoverse.com/payment/zenless/index.html?lang=ja-jp' },
+];
+
+const KEY='hoyopass-v1';
+let state = load();
+
+function load(){
+  try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s){ return migrate(s); } }catch(e){}
+  const urls={}, passes={}, seasonTier={};
+  GAMES.forEach(g=>{
+    urls[g.id]=g.url;
+    passes[g.id+'_season']={date:g.seasonAnchor, days:g.seasonDays};
+    passes[g.id+'_month']={date:iso(todayMid()), days:30}; // 月パスは毎月更新前提で初期ON
+    seasonTier[g.id]='std';
+  });
+  return { lead:3, urls, passes, seasonTier };  // passes[key]={date,days} / seasonTier[gid]='std'|'premium'
+}
+function migrate(s){
+  if(!s.seasonTier) s.seasonTier={};
+  if(!s.urls) s.urls={};
+  // 旧デフォルト（コード交換ページ）を新デフォルト（公式トップアップセンター日本語）へ更新
+  const OLD_URLS={
+    genshin:'https://genshin.hoyoverse.com/en/gift',
+    hsr:'https://hsr.hoyoverse.com/gift',
+    zzz:'https://zenless.hoyoverse.com/en/topup'
+  };
+  GAMES.forEach(g=>{
+    if(!s.seasonTier[g.id]) s.seasonTier[g.id]='std';
+    if(!s.passes[g.id+'_month']) s.passes[g.id+'_month']={date:iso(todayMid()),days:30}; // 月パスを毎月更新前提で補完
+    if(!s.urls[g.id] || s.urls[g.id]===OLD_URLS[g.id]) s.urls[g.id]=g.url; // 未設定/旧既定なら新URLへ
+  });
+  delete s.prices; // 旧フォーマット破棄
+  return s;
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(state)); }
+
+function passKey(gid,t){ return gid+'_'+t; }
+function getPass(gid,t){ return state.passes[passKey(gid,t)]; }
+
+function remainInfo(p,type){
+  if(!p) return {state:'none'};
+  const cycle=p.days, today=todayMid();
+  if(type==='month'){
+    // 購入日 → 期限（残りが減ったら更新）
+    const start=parse(p.date);
+    const ref=new Date(start.getTime()+cycle*DAY);
+    const left=Math.round((ref-today)/DAY);
+    let cls='s-ok';
+    if(left<0) cls='s-danger'; else if(left<=state.lead) cls='s-warn';
+    const used=Math.min(cycle,Math.max(0,Math.round((today-start)/DAY)));
+    return {state:'has', kind:'month', ref, left, cls, pct:Math.max(0,Math.min(100,100-(used/cycle)*100))};
+  }
+  // season: 次回アップデート日までのカウントダウン（過ぎたら周期分だけ自動で次へ）
+  let next=parse(p.date);
+  while(next<today){ next=new Date(next.getTime()+cycle*DAY); }
+  const left=Math.round((next-today)/DAY);
+  const prev=new Date(next.getTime()-cycle*DAY);
+  const used=Math.min(cycle,Math.max(0,Math.round((today-prev)/DAY)));
+  const cls = left<=state.lead ? 's-warn' : 's-ok';
+  return {state:'has', kind:'season', ref:next, left, cls, pct:Math.max(0,Math.min(100,100-(used/cycle)*100))};
+}
+
+let view='list';
+function render(){
+  document.getElementById('todayLabel').textContent = '今日 '+fmt(todayMid());
+  document.getElementById('btnView').textContent = view==='list' ? '📅 カレンダー' : '📋 一覧に戻る';
+  if(view==='calendar'){
+    document.getElementById('list').style.display='none';
+    document.getElementById('calView').style.display='block';
+    document.getElementById('warnNote').style.display='none';
+    renderCalendar();
+  }else{
+    document.getElementById('calView').style.display='none';
+    document.getElementById('list').style.display='block';
+    renderList();
+  }
+}
+document.getElementById('btnView').onclick=()=>{ view = view==='list'?'calendar':'list'; render(); };
+
+// ===== 価格・課金イベント =====
+function tierOf(gid){ return (state.seasonTier&&state.seasonTier[gid])||'std'; }
+function priceOf(gid,t){
+  const g=GAMES.find(x=>x.id===gid);
+  if(t==='month') return Number(g.monthPrice)||0;
+  return tierOf(gid)==='premium' ? (Number(g.seasonPremiumPrice)||0) : (Number(g.seasonStdPrice)||0);
+}
+const yen = n => '¥'+Number(n).toLocaleString('ja-JP');
+
+// 今日〜monthsAhead先までに必要な課金イベントを生成
+function paymentEvents(monthsAhead){
+  const today=todayMid();
+  const horizon=new Date(today); horizon.setMonth(horizon.getMonth()+monthsAhead);
+  const events=[];
+  GAMES.forEach(g=>{
+    [['month',g.month],['season',g.season]].forEach(([t,name])=>{
+      const p=getPass(g.id,t); if(!p) return;
+      const amount=priceOf(g.id,t); if(amount<=0) return;
+      const cycle=p.days;
+      // 月パス＝期限(購入+日数)が次の課金日 / シーズン＝アップデート日が課金日
+      let d = t==='month' ? new Date(parse(p.date).getTime()+cycle*DAY) : parse(p.date);
+      while(d<today) d=new Date(d.getTime()+cycle*DAY);
+      while(d<=horizon){
+        events.push({date:new Date(d), gameId:g.id, type:t, name, amount, color:g.color});
+        d=new Date(d.getTime()+cycle*DAY);
+      }
+    });
+  });
+  events.sort((a,b)=>a.date-b.date || a.gameId.localeCompare(b.gameId));
+  return events;
+}
+
+let calY, calM; // 表示中の年・月
+function renderCalendar(){
+  const today=todayMid();
+  if(calY===undefined){ calY=today.getFullYear(); calM=today.getMonth(); }
+  const events=paymentEvents(24);
+  const byDay={};
+  events.forEach(e=>{ const k=iso(e.date); (byDay[k]=byDay[k]||[]).push(e); });
+
+  // 今後6ヶ月の合計
+  const h6=new Date(today); h6.setMonth(h6.getMonth()+6);
+  const total6=events.filter(e=>e.date<=h6).reduce((a,e)=>a+e.amount,0);
+
+  const first=new Date(calY,calM,1);
+  const startDow=first.getDay();
+  const dim=new Date(calY,calM+1,0).getDate();
+  const dows=['日','月','火','水','木','金','土'];
+  let monthTotal=0; const monthEvents=[];
+
+  let cells='';
+  for(let i=0;i<startDow;i++) cells+='<div class="cal-cell empty"></div>';
+  for(let d=1;d<=dim;d++){
+    const dateObj=new Date(calY,calM,d), k=iso(dateObj);
+    const evs=byDay[k]||[];
+    const sum=evs.reduce((a,e)=>a+e.amount,0);
+    const isToday=k===iso(today);
+    const dots=evs.map(e=>`<span class="cal-dot" style="background:${e.color}"></span>`).join('');
+    cells+=`<div class="cal-cell${evs.length?' has':''}${isToday?' today':''}">
+      <div class="cal-d">${d}</div>
+      ${evs.length?`<div class="cal-dots">${dots}</div><div class="cal-amt">${yen(sum)}</div>`:''}
+    </div>`;
+    if(evs.length){ monthTotal+=sum; evs.forEach(e=>monthEvents.push(e)); }
+  }
+
+  const dowHtml=dows.map((w,i)=>`<div class="cal-dow${i===0?' sun':''}${i===6?' sat':''}">${w}</div>`).join('');
+  const evtHtml = monthEvents.length ? monthEvents.map(e=>`
+      <div class="cal-evt">
+        <span class="edot" style="background:${e.color}"></span>
+        <span class="ed">${e.date.getMonth()+1}/${e.date.getDate()}</span>
+        <span class="enm">${GAMES.find(g=>g.id===e.gameId).name}・${e.name}
+          <span class="epill">${e.type==='month'?'月パス':'シーズン'}</span></span>
+        <span class="eamt">${yen(e.amount)}</span>
+      </div>`).join('')
+    : '<div class="cal-empty">この月に必要な課金はありません</div>';
+
+  document.getElementById('calView').innerHTML=`
+    <div class="cal-sum"><span>今後6ヶ月で必要な課金の合計</span><b>${yen(total6)}</b></div>
+    <div class="cal-head">
+      <button class="btn sm" id="calPrev">◀</button>
+      <div style="text-align:center">
+        <div class="mtitle">${calY}年 ${calM+1}月</div>
+        <div class="mtot">この月の合計 ${yen(monthTotal)}</div>
+      </div>
+      <button class="btn sm" id="calNext">▶</button>
+    </div>
+    <div class="cal-grid">${dowHtml}${cells}</div>
+    <div class="cal-list">${evtHtml}
+      ${monthEvents.length?`<div class="cal-mtot"><span>${calM+1}月 合計</span><span>${yen(monthTotal)}</span></div>`:''}
+    </div>`;
+
+  document.getElementById('calPrev').onclick=()=>{ calM--; if(calM<0){calM=11;calY--;} renderCalendar(); };
+  document.getElementById('calNext').onclick=()=>{ calM++; if(calM>11){calM=0;calY++;} renderCalendar(); };
+}
+
+function renderList(){
+  const list=document.getElementById('list'); list.innerHTML='';
+  const warns=[];
+  GAMES.forEach(g=>{
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<div class="game-head">
+        <img class="badge" src="${g.iconUrl}" alt="${g.name}" style="background:${g.color}" onerror="this.onerror=null;this.src='icons/${g.id}.png'">
+
+        <div style="flex:1"><div class="name">${g.name}</div><div class="sub">${g.sub}</div></div>
+        <button class="btn sm primary" data-buy="${g.id}">🛒 課金センター</button>
+      </div>`;
+    [['month','月パス'],['season','シーズン/BP']].forEach(([t,lbl])=>{
+      const p=getPass(g.id,t); const r=remainInfo(p,t);
+      const passName = t==='month'?g.month:g.season;
+      const row=document.createElement('div'); row.className='pass';
+      let daysHtml, prog='', pdate;
+      if(r.state==='none'){
+        daysHtml=`<div class="days s-none"><div class="n">未登録</div></div>`;
+        pdate = t==='month' ? 'タップして購入日を登録' : 'タップして次回アップデート日を登録';
+      }else{
+        const txt = (t==='month'&&r.left<0) ? `期限切れ` : `${r.left}`;
+        const unit = (t==='month'&&r.left<0) ? '' : '日';
+        daysHtml=`<div class="days ${r.cls}"><div class="n">${txt}</div><div class="u">${unit?'残り'+unit:fmt(r.ref)}</div></div>`;
+        const col = r.cls==='s-danger'?'var(--danger)':r.cls==='s-warn'?'var(--warn)':'var(--ok)';
+        prog=`<div class="progress"><i style="width:${r.pct}%;background:${col}"></i></div>`;
+        pdate = t==='month'
+          ? `購入 ${fmt(parse(p.date))} → 期限 ${fmt(r.ref)}`
+          : `次回アップデート予定 ${fmt(r.ref)}（周期${p.days}日）`;
+        if(r.left<=state.lead){
+          const msg = t==='month'
+            ? (r.left<0?'期限切れ':'あと'+r.left+'日で期限')
+            : (r.left<=0?'本日アップデート':'あと'+r.left+'日でアップデート');
+          warns.push(`${g.name}「${passName}」：${msg}`);
+        }
+      }
+      row.innerHTML=`
+        <div class="meta">
+          <div class="ptype">${passName}<span class="pill ${t==='month'?'month':'season'}">${lbl}</span></div>
+          <div class="pdate">${pdate}</div>
+          ${prog}
+          ${t==='month' ? `<div class="actions">
+            <button class="btn sm" data-edit="${g.id}|${t}">${p?'✎ 更新':'＋ 登録'}</button>
+          </div>` : ''}
+        </div>
+        ${daysHtml}`;
+      card.appendChild(row);
+    });
+    list.appendChild(card);
+  });
+  const note=document.getElementById('warnNote');
+  if(warns.length){ note.style.display='block'; note.innerHTML='⚠️ <b>更新が近いパス</b><br>'+warns.join('<br>'); }
+  else note.style.display='none';
+
+  list.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(...b.dataset.edit.split('|')));
+  list.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>openTopup(b.dataset.buy));
+}
+
+function openTopup(gid){
+  const url=state.urls[gid]||GAMES.find(g=>g.id===gid).url;
+  window.open(url,'_blank','noopener');
+}
+
+// ===== 編集 =====
+let editCtx=null;
+function openEdit(gid,t){
+  editCtx={gid,t};
+  const g=GAMES.find(x=>x.id===gid); const p=getPass(gid,t);
+  document.getElementById('mTitle').textContent=`${g.name} ・ ${t==='month'?g.month:g.season}`;
+  document.getElementById('mDate').value = p?p.date:iso(todayMid());
+  document.getElementById('mDays').value = p?p.days:(t==='month'?30:g.seasonDays);
+  // ラベルをタイプ別に切替
+  document.getElementById('lblDate').textContent = t==='month' ? '購入日（開始日）' : '次回アップデート日';
+  document.getElementById('lblDays').textContent = t==='month' ? '有効期間（日数）' : '更新周期（日数）';
+  document.getElementById('lblExpiry').textContent = t==='month' ? '期限日（自動計算）' : '次回更新日（自動計算）';
+  document.getElementById('mHint').innerHTML = t==='month'
+    ? '月パスは通常 <b>30日間</b>。購入日を入れると期限を自動計算します。'
+    : '次のアップデート（新バージョン）日を入れると、その日が近づくと通知します。周期は約 <b>42日</b>。アップデート日が過ぎると周期分だけ自動で次回へ繰り上がります。';
+  syncExpiry();
+  openModal('modal');
+}
+function syncExpiry(){
+  const d=document.getElementById('mDate').value;
+  const n=parseInt(document.getElementById('mDays').value)||0;
+  if(d&&n){ const e=new Date(parse(d).getTime()+n*DAY); document.getElementById('mExpiry').value=iso(e); }
+}
+document.getElementById('mDate').oninput=syncExpiry;
+document.getElementById('mDays').oninput=syncExpiry;
+document.getElementById('mSave').onclick=()=>{
+  const d=document.getElementById('mDate').value;
+  const n=parseInt(document.getElementById('mDays').value);
+  if(!d||!n){ toast('日付と日数を入力してください'); return; }
+  state.passes[passKey(editCtx.gid,editCtx.t)]={date:d,days:n};
+  save(); closeModal('modal'); render(); toast('保存しました');
+};
+document.getElementById('mClear').onclick=()=>{
+  delete state.passes[passKey(editCtx.gid,editCtx.t)];
+  save(); closeModal('modal'); render(); toast('登録を削除しました');
+};
+document.getElementById('mCancel').onclick=()=>closeModal('modal');
+
+// ===== 設定 =====
+document.getElementById('btnSettings').onclick=()=>{
+  document.getElementById('sLead').value=state.lead;
+  const pbox=document.getElementById('priceEdits');
+  pbox.innerHTML='<label style="color:var(--text);margin-top:16px">シーズンパスの種類（金額に反映）</label>';
+  GAMES.forEach(g=>{
+    const tier=tierOf(g.id);
+    pbox.insertAdjacentHTML('beforeend',
+      `<label>${g.name}・${g.season}</label>
+       <select data-tier="${g.id}">
+         <option value="std" ${tier==='std'?'selected':''}>標準：${g.seasonStdName}（${yen(g.seasonStdPrice)}）</option>
+         <option value="premium" ${tier==='premium'?'selected':''}>上位：${g.seasonPremiumName}（${yen(g.seasonPremiumPrice)}）</option>
+       </select>`);
+  });
+  pbox.insertAdjacentHTML('beforeend',
+    `<div class="hint">月パスは毎月更新前提で各¥${GAMES[0].monthPrice}固定。購入日（更新日）は一覧の各月パスから調整できます。</div>`);
+  const box=document.getElementById('urlEdits'); box.innerHTML='<label style="color:var(--text);margin-top:16px">課金センターURL</label>';
+  GAMES.forEach(g=>{
+    box.insertAdjacentHTML('beforeend',
+      `<label>${g.name}</label>
+       <input type="url" data-url="${g.id}" value="${state.urls[g.id]||g.url}">`);
+  });
+  openModal('settings');
+};
+document.getElementById('sSave').onclick=()=>{
+  state.lead=Math.max(0,parseInt(document.getElementById('sLead').value)||0);
+  document.querySelectorAll('[data-url]').forEach(i=>state.urls[i.dataset.url]=i.value.trim());
+  if(!state.seasonTier) state.seasonTier={};
+  document.querySelectorAll('[data-tier]').forEach(s=>state.seasonTier[s.dataset.tier]=s.value);
+  save(); closeModal('settings'); render(); toast('設定を保存しました');
+};
+document.getElementById('sCancel').onclick=()=>closeModal('settings');
+
+// ===== 通知 =====
+document.getElementById('btnNotify').onclick=async()=>{
+  if(!('Notification'in window)){ toast('この端末は通知に未対応です'); return; }
+  const p=await Notification.requestPermission();
+  if(p==='granted'){ toast('通知を有効にしました'); checkNotify(true); }
+  else toast('通知が許可されませんでした');
+};
+function checkNotify(force){
+  if(!('Notification'in window)||Notification.permission!=='granted') return;
+  const todayStr=iso(todayMid());
+  GAMES.forEach(g=>{
+    ['month','season'].forEach(t=>{
+      const p=getPass(g.id,t); if(!p) return;
+      const r=remainInfo(p,t);
+      if(r.left<=state.lead){
+        const flag='notif_'+passKey(g.id,t)+'_'+todayStr;
+        if(force||!localStorage.getItem(flag)){
+          localStorage.setItem(flag,'1');
+          const name=t==='month'?g.month:g.season;
+          const body = t==='month'
+            ? (r.left<0?'期限切れです。更新しましょう':`期限まであと${r.left}日です`)
+            : (r.left<=0?'本日アップデート予定です。新シーズン開始後に購入を':`次回アップデートまであと${r.left}日です`);
+          new Notification(`${g.name}：${name}`,{ body, tag:passKey(g.id,t) });
+        }
+      }
+    });
+  });
+}
+
+// ===== バックアップ =====
+document.getElementById('btnExport').onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='hoyopass-backup.json'; a.click(); toast('バックアップを書き出しました');
+};
+document.getElementById('btnImport').onclick=()=>document.getElementById('fileIn').click();
+document.getElementById('fileIn').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ state=JSON.parse(r.result); save(); render(); toast('復元しました'); }
+    catch(err){ toast('ファイルを読めませんでした'); } };
+  r.readAsText(f);
+};
+
+// ===== modal helpers =====
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+
+// PWA: manifest + service worker (blob)
+(function(){
+  const manifest={name:'Celestia',short_name:'Celestia',display:'standalone',
+    background_color:'#0f1226',theme_color:'#0f1226',start_url:'.',
+    icons:[{src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="42" fill="#6F7BFF"/><path d="M120 54a48 48 0 1 0 0 84 39 39 0 1 1 0-84z" fill="#fff"/></svg>'),sizes:'192x192',type:'image/svg+xml'}]};
+  const ml=document.createElement('link'); ml.rel='manifest';
+  ml.href=URL.createObjectURL(new Blob([JSON.stringify(manifest)],{type:'application/json'}));
+  document.head.appendChild(ml);
+})();
+
+render();
+checkNotify();
+setInterval(checkNotify, 60*60*1000); // 開いている間は1時間ごとに判定
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ render(); checkNotify(); }});
+</script>
+</body>
+</html>
