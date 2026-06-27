@@ -126,8 +126,8 @@ fun PassEntry.remaining(today: LocalDate = logicalToday()): Remaining {
     val start = LocalDate.parse(startDate)
     val expiry = start.plusDays(days.toLong())
     val left = ChronoUnit.DAYS.between(today, expiry)
-    val used = ChronoUnit.DAYS.between(start, today).coerceIn(0, days.toLong())
-    val pct = if (days == 0) 0f else (1f - used.toFloat() / days).coerceIn(0f, 1f)
+    // ゲージは上限30日：残り30日以上で満タン、未満は残り日数に比例
+    val pct = (minOf(left, 30L).toFloat() / 30f).coerceIn(0f, 1f)
     return Remaining(expiry, left, pct)
 }
 

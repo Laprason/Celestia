@@ -244,8 +244,9 @@ function remainInfo(p,type){
     const left=Math.round((ref-today)/DAY);
     let cls='s-ok';
     if(left<0) cls='s-danger'; else if(left<=state.lead) cls='s-warn';
-    const used=Math.min(cycle,Math.max(0,Math.round((today-start)/DAY)));
-    return {state:'has', kind:'month', ref, left, cls, pct:Math.max(0,Math.min(100,100-(used/cycle)*100))};
+    // ゲージは上限30日：残り30日以上で満タン、未満は残り日数に比例
+    const pct=Math.max(0,Math.min(1,Math.min(left,30)/30))*100;
+    return {state:'has', kind:'month', ref, left, cls, pct};
   }
   // season: 次回アップデート日までのカウントダウン（過ぎたら周期分だけ自動で次へ）
   let next=parse(p.date);
