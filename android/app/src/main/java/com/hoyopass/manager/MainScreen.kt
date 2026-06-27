@@ -92,6 +92,7 @@ fun MainScreen(repo: PassRepository, onOpenTopup: (String) -> Unit) {
                         game = game,
                         data = data,
                         onEdit = { type -> editing = game.id to type },
+                        onExtend = { scope.launch { repo.extendMonth(game.id) } },
                         onBuy = { onOpenTopup(data.urlFor(game.id)) },
                     )
                 }
@@ -126,6 +127,7 @@ private fun GameCard(
     game: GameDef,
     data: AppData,
     onEdit: (PassType) -> Unit,
+    onExtend: () -> Unit,
     onBuy: () -> Unit,
 ) {
     Surface(color = CARD, shape = RoundedCornerShape(16.dp)) {
@@ -148,9 +150,9 @@ private fun GameCard(
                 SmallButton("🛒 課金センター", true) { onBuy() }
             }
             Spacer(Modifier.height(4.dp))
-            PassRow(game, data, PassType.MONTHLY, onEdit)
+            PassRow(game, data, PassType.MONTHLY, onEdit, onExtend)
             HorizontalDivider(color = LINE)
-            PassRow(game, data, PassType.SEASON, onEdit)
+            PassRow(game, data, PassType.SEASON, onEdit, onExtend)
         }
     }
 }
@@ -161,6 +163,7 @@ private fun PassRow(
     data: AppData,
     type: PassType,
     onEdit: (PassType) -> Unit,
+    onExtend: () -> Unit,
 ) {
     val entry = data.passes[passKey(game.id, type)]
     val passName = if (type == PassType.MONTHLY) game.monthName else game.seasonName
@@ -199,7 +202,10 @@ private fun PassRow(
             }
             if (type == PassType.MONTHLY) {
                 Spacer(Modifier.height(10.dp))
-                SmallButton(if (entry != null) "✎ 更新" else "＋ 登録", false) { onEdit(type) }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SmallButton("延長", true) { onExtend() }
+                    SmallButton("✎ 編集", false) { onEdit(type) }
+                }
             }
         }
         Spacer(Modifier.width(12.dp))

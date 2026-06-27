@@ -58,6 +58,21 @@ class PassRepository(private val context: Context) {
         d.copy(passes = d.passes - passKey(gameId, type))
     }
 
+    /** 月パスを30日延長（現在の期限から積み増し。期限切れなら今日から30日で再開）。 */
+    suspend fun extendMonth(gameId: String) = update { d ->
+        val key = passKey(gameId, PassType.MONTHLY)
+        val today = logicalToday()
+        val cur = d.passes[key]
+        val next = if (cur == null) {
+            PassEntry(gameId, PassType.MONTHLY, today.toString(), 30)
+        } else {
+            val expiry = java.time.LocalDate.parse(cur.startDate).plusDays(cur.days.toLong())
+            if (!expiry.isBefore(today)) cur.copy(days = cur.days + 30)
+            else PassEntry(gameId, PassType.MONTHLY, today.toString(), 30)
+        }
+        d.copy(passes = d.passes + (key to next))
+    }
+
     suspend fun setLeadDays(days: Int) = update { it.copy(leadDays = days.coerceIn(0, 30)) }
 
     suspend fun setUrl(gameId: String, url: String) = update { d ->

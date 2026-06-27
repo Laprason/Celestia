@@ -292,13 +292,13 @@ function paymentEvents(monthsAhead){
     [['month',g.month],['season',g.season]].forEach(([t,name])=>{
       const p=getPass(g.id,t); if(!p) return;
       const amount=priceOf(g.id,t); if(amount<=0) return;
-      const cycle=p.days;
-      // 月パス＝期限(購入+日数)が次の課金日 / シーズン＝アップデート日が課金日
-      let d = t==='month' ? new Date(parse(p.date).getTime()+cycle*DAY) : parse(p.date);
-      while(d<today) d=new Date(d.getTime()+cycle*DAY);
+      // 月パス＝現在の期限(購入+累積日数)が次の課金日で、以後30日ごと / シーズン＝アップデート日(周期)ごと
+      const step = (t==='month' ? 30 : p.days);
+      let d = t==='month' ? new Date(parse(p.date).getTime()+p.days*DAY) : parse(p.date);
+      while(d<today) d=new Date(d.getTime()+step*DAY);
       while(d<=horizon){
         events.push({date:new Date(d), gameId:g.id, type:t, name, amount, color:g.color});
-        d=new Date(d.getTime()+cycle*DAY);
+        d=new Date(d.getTime()+step*DAY);
       }
     });
   });
@@ -410,7 +410,8 @@ function renderList(){
           <div class="pdate">${pdate}</div>
           ${prog}
           ${t==='month' ? `<div class="actions">
-            <button class="btn sm" data-edit="${g.id}|${t}">${p?'✎ 更新':'＋ 登録'}</button>
+            <button class="btn sm primary" data-extend="${g.id}">延長</button>
+            <button class="btn sm" data-edit="${g.id}|${t}">✎ 編集</button>
           </div>` : ''}
         </div>
         ${daysHtml}`;
@@ -423,7 +424,23 @@ function renderList(){
   else note.style.display='none';
 
   list.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(...b.dataset.edit.split('|')));
+  list.querySelectorAll('[data-extend]').forEach(b=>b.onclick=()=>extendMonth(b.dataset.extend));
   list.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>openTopup(b.dataset.buy));
+}
+
+// 月パス：押すたびに現在の期限から30日延長（期限切れなら今日から30日）
+function extendMonth(gid){
+  const k=passKey(gid,'month'), today=logicalToday(), p=state.passes[k];
+  if(!p){ state.passes[k]={date:iso(today),days:30}; }
+  else{
+    const exp=new Date(parse(p.date).getTime()+p.days*DAY);
+    if(exp>=today){ p.days+=30; }            // 現在の期限から+30日
+    else{ p.date=iso(today); p.days=30; }    // 期限切れは今日から30日で再開
+  }
+  save(); render();
+  const np=state.passes[k];
+  const nexp=new Date(parse(np.date).getTime()+np.days*DAY);
+  toast(`月パスを延長 → 期限 ${fmt(nexp)}`);
 }
 
 function openTopup(gid){

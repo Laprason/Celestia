@@ -159,13 +159,15 @@ fun AppData.paymentEvents(
             val amount = priceOf(g.id, type)
             if (amount <= 0) return@forEach
             val name = if (type == PassType.MONTHLY) g.monthName else g.seasonName
+            // 月パス＝現在の期限(購入+累積日数)が次の課金で以後30日ごと / シーズン＝周期(=days)ごと
+            val step = if (type == PassType.MONTHLY) 30L else p.days.toLong()
             var d = if (type == PassType.MONTHLY)
                 LocalDate.parse(p.startDate).plusDays(p.days.toLong())
             else LocalDate.parse(p.startDate)
-            while (d.isBefore(today)) d = d.plusDays(p.days.toLong())
+            while (d.isBefore(today)) d = d.plusDays(step)
             while (!d.isAfter(horizon)) {
                 events.add(PaymentEvent(d, g.id, type, name, amount))
-                d = d.plusDays(p.days.toLong())
+                d = d.plusDays(step)
             }
         }
     }
