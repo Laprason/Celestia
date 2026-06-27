@@ -198,6 +198,8 @@ private fun PassRow(
                     progress = { rem.percentLeft },
                     modifier = Modifier.fillMaxWidth().height(5.dp),
                     color = col, trackColor = Color(0xFF262B54),
+                    gapSize = 0.dp,            // 塗りと残りトラックの隙間をなくす
+                    drawStopIndicator = {},    // 端の丸い点を消す
                 )
             }
             if (type == PassType.MONTHLY) {
