@@ -8,6 +8,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.time.LocalDate
+import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
 /** 定期的にパスの期限を確認し、しきい値以内なら通知を出す。 */
@@ -23,7 +24,13 @@ class ReminderWorker(
 
         data.passes.values.forEach { entry ->
             val rem = entry.remaining(today)
-            if (rem.daysLeft <= data.leadDays) {
+            val shouldNotify = when (entry.type) {
+                // 月パスは期限の lead 日前から
+                PassType.MONTHLY -> rem.daysLeft <= data.leadDays
+                // シーズンはアップデート当日（残り0日）かつ正午以降＝アプデ後
+                PassType.SEASON -> rem.daysLeft == 0L && LocalTime.now().hour >= SEASON_UPDATE_HOUR
+            }
+            if (shouldNotify) {
                 val game = gameById(entry.gameId)
                 val passName = if (entry.type == PassType.MONTHLY) game.monthName else game.seasonName
                 NotificationHelper.notify(
@@ -39,7 +46,7 @@ class ReminderWorker(
         private const val WORK_NAME = "pass_reminder_periodic"
 
         fun schedule(context: Context) {
-            val req = PeriodicWorkRequestBuilder<ReminderWorker>(12, TimeUnit.HOURS)
+            val req = PeriodicWorkRequestBuilder<ReminderWorker>(6, TimeUnit.HOURS)
                 .build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, req

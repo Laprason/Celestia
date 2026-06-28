@@ -38,8 +38,7 @@ object NotificationHelper {
         )
 
         val body = if (type == PassType.SEASON) {
-            if (daysLeft <= 0) "本日アップデート予定。新シーズン開始後にタップで購入できます"
-            else "次回アップデートまであと${daysLeft}日。タップで課金センターを開きます"
+            "アップデートが来ました。タップで新シーズンのパスを購入できます"
         } else {
             if (daysLeft < 0) "期限切れです。タップで課金センターを開きます"
             else "期限まであと${daysLeft}日。タップで課金センターを開きます"
@@ -51,6 +50,7 @@ object NotificationHelper {
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setContentIntent(pi)
             .build()
 

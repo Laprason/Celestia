@@ -8,6 +8,9 @@ import java.time.temporal.ChronoUnit
 /** 残り日数の切り替わり時刻（午前5時）。これより前は前日扱い。 */
 const val DAY_ROLLOVER_HOUR = 5
 
+/** シーズン通知を出す時刻（アップデート当日のこの時刻以降）。 */
+const val SEASON_UPDATE_HOUR = 12
+
 /** 5時境界を適用した「論理的な今日」。 */
 fun logicalToday(): LocalDate {
     val now = LocalDateTime.now()
