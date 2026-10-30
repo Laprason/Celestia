@@ -11,7 +11,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
-/** 定期的にパスの期限を確認し、しきい値以内なら通知を出す。 */
+/** 定期的にバージョン情報を同期し、パスの期限を確認してしきい値以内なら通知を出す。 */
 class ReminderWorker(
     context: Context,
     params: WorkerParameters,
@@ -19,6 +19,8 @@ class ReminderWorker(
 
     override suspend fun doWork(): Result {
         val repo = PassRepository(applicationContext)
+        // 次回アップデート日を公式から補正してから判定（オフライン等で失敗しても通知判定は続行）
+        runCatching { VersionSync.sync(repo) }
         val data = repo.snapshot()
         val today = logicalToday()
 

@@ -169,6 +169,9 @@ private fun PassRow(
     val passName = if (type == PassType.MONTHLY) game.monthName else game.seasonName
     val typeLabel = if (type == PassType.MONTHLY) "月パス" else "シーズン/BP"
     val rem = entry?.remaining()
+    // 自動取得した次回アップデート日と一致している間だけバージョンを表示
+    val synced = data.versionSync[game.id]
+        ?.takeIf { type == PassType.SEASON && rem != null && it.nextUpdate == rem.expiry.toString() }
 
     Row(
         Modifier.fillMaxWidth().padding(vertical = 12.dp),
@@ -184,6 +187,8 @@ private fun PassRow(
                 when {
                     entry == null && type == PassType.SEASON -> "タップして次回アップデート日を登録"
                     entry == null -> "タップして購入日を登録"
+                    synced != null ->
+                        "Ver.${synced.version} → 次回アップデート ${rem!!.expiry.format(dateFmt)}（自動取得）"
                     type == PassType.SEASON ->
                         "次回アップデート予定 ${rem!!.expiry.format(dateFmt)}（周期${entry.days}日）"
                     else ->
@@ -304,7 +309,7 @@ private fun EditDialog(
                     color = if (expiry != null) SUB else DANGER, fontSize = 12.sp,
                 )
                 Text(
-                    if (season) "次のアップデート（新バージョン）日を入力すると、その日が近づくと通知します。周期は約42日。アップデート日が過ぎると自動で次回へ繰り上がります。"
+                    if (season) "次のアップデート（新バージョン）日を入力すると、その日が近づくと通知します。周期は約42日。アップデート日が過ぎると自動で次回へ繰り上がります。次回アップデート日は新バージョン情報が出るたびに自動で補正されます。"
                     else "月パスは通常30日間です。",
                     color = SUB, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp),
                 )

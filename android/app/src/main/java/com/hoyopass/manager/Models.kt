@@ -47,7 +47,7 @@ val GAMES = listOf(
         id = "genshin", name = "原神", sub = "Genshin Impact", colorHex = 0xFF3B6FE0,
         iconUrl = "https://play-lh.googleusercontent.com/YQqyKaXX-63krqsfIzUEJWUWLINxcb5tbS6QVySdxbS7eZV7YB2dUjUvX27xA0TIGtfxQ5v-tQjwlT5tTB-O=s144",
         monthName = "空月の祝福", seasonName = "紀行", seasonDays = 42,
-        seasonAnchor = "2026-07-01", monthPrice = 610,
+        seasonAnchor = "2026-11-04", monthPrice = 610,
         seasonStdName = "精緻な紀行", seasonStdPrice = 1220,
         seasonPremiumName = "華麗な紀行", seasonPremiumPrice = 2440,
         defaultUrl = "https://sdk.hoyoverse.com/payment/genshin/index.html?lang=ja-jp",
@@ -56,7 +56,7 @@ val GAMES = listOf(
         id = "hsr", name = "スターレイル", sub = "Honkai: Star Rail", colorHex = 0xFF7C4DFF,
         iconUrl = "https://play-lh.googleusercontent.com/aWrGocSA7hEuk1qAPe7L4T57LvLKrwwH26cK2_LOqxRQMQX7j3uHYojC-EKWgYEV2PdrmE0ahqvvhLhXrAGk6Q=s144",
         monthName = "列車補給標章", seasonName = "ナナシの勲功", seasonDays = 42,
-        seasonAnchor = "2026-07-15", monthPrice = 610,
+        seasonAnchor = "2026-11-11", monthPrice = 610,
         seasonStdName = "ナナシビトの褒章", seasonStdPrice = 1220,
         seasonPremiumName = "ナナシビトの勲章", seasonPremiumPrice = 2480,
         defaultUrl = "https://sdk.hoyoverse.com/payment/hsr/index.html?lang=ja-jp",
@@ -65,7 +65,7 @@ val GAMES = listOf(
         id = "zzz", name = "ゼンレスゾーンゼロ", sub = "Zenless Zone Zero", colorHex = 0xFFFF7A3D,
         iconUrl = "https://play-lh.googleusercontent.com/-ZZaqZBQ7EBjH4j0hyHX-0Fu0jUtnoOc-LwydvgQmsXWBZLxyAhxPcmIakzZB7NFurlK4Mj0pbvYe0pHYSuv4p8=s144",
         monthName = "インターノット会員権", seasonName = "エリーファンド", seasonDays = 42,
-        seasonAnchor = "2026-07-29", monthPrice = 610,
+        seasonAnchor = "2026-12-02", monthPrice = 610,
         seasonStdName = "成長プラン", seasonStdPrice = 1220,
         seasonPremiumName = "プレミアムプラン", seasonPremiumPrice = 2480,
         defaultUrl = "https://sdk.hoyoverse.com/payment/zenless/index.html?lang=ja-jp",
@@ -93,6 +93,15 @@ data class AppData(
     val seasonTiers: Map<String, SeasonTier> = emptyMap(),
     /** 初回シーズン初期値の投入済みフラグ */
     val seeded: Boolean = false,
+    /** key = gameId → 最後に自動反映したバージョン情報 */
+    val versionSync: Map<String, VersionInfo> = emptyMap(),
+)
+
+/** 公式お知らせから取得したバージョン情報。nextUpdate は ISO (yyyy-MM-dd, JST)。 */
+@Serializable
+data class VersionInfo(
+    val version: String,
+    val nextUpdate: String,
 )
 
 fun AppData.tierOf(gameId: String): SeasonTier = seasonTiers[gameId] ?: SeasonTier.STD

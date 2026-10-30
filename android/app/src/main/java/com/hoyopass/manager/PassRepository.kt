@@ -73,6 +73,20 @@ class PassRepository(private val context: Context) {
         d.copy(passes = d.passes + (key to next))
     }
 
+    /**
+     * 自動取得した次回アップデート日をシーズンパスへ反映。
+     * 前回と同じ情報は再適用しない（ユーザーが手動で直した日付を尊重）。
+     */
+    suspend fun applyVersions(found: Map<String, VersionInfo>) = update { d ->
+        var passes = d.passes
+        found.forEach { (gameId, info) ->
+            if (d.versionSync[gameId] == info) return@forEach
+            val key = passKey(gameId, PassType.SEASON)
+            passes[key]?.let { passes = passes + (key to it.copy(startDate = info.nextUpdate)) }
+        }
+        d.copy(passes = passes, versionSync = d.versionSync + found)
+    }
+
     suspend fun setLeadDays(days: Int) = update { it.copy(leadDays = days.coerceIn(0, 30)) }
 
     suspend fun setUrl(gameId: String, url: String) = update { d ->

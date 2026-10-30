@@ -184,17 +184,17 @@ const parse = s => { const [y,m,dd]=s.split('-').map(Number); const d=new Date(y
 const GAMES = [
   { id:'genshin', name:'原神', sub:'Genshin Impact', color:'#3b6fe0',
     iconUrl:'https://play-lh.googleusercontent.com/YQqyKaXX-63krqsfIzUEJWUWLINxcb5tbS6QVySdxbS7eZV7YB2dUjUvX27xA0TIGtfxQ5v-tQjwlT5tTB-O=s144',
-    month:'空月の祝福', season:'紀行', seasonDays:42, seasonAnchor:'2026-07-01',
+    month:'空月の祝福', season:'紀行', seasonDays:42, seasonAnchor:'2026-11-04',
     monthPrice:610, seasonStdName:'精緻な紀行', seasonStdPrice:1220, seasonPremiumName:'華麗な紀行', seasonPremiumPrice:2440,
     url:'https://sdk.hoyoverse.com/payment/genshin/index.html?lang=ja-jp' },
   { id:'hsr', name:'スターレイル', sub:'Honkai: Star Rail', color:'#7c4dff',
     iconUrl:'https://play-lh.googleusercontent.com/aWrGocSA7hEuk1qAPe7L4T57LvLKrwwH26cK2_LOqxRQMQX7j3uHYojC-EKWgYEV2PdrmE0ahqvvhLhXrAGk6Q=s144',
-    month:'列車補給標章', season:'ナナシの勲功', seasonDays:42, seasonAnchor:'2026-07-15',
+    month:'列車補給標章', season:'ナナシの勲功', seasonDays:42, seasonAnchor:'2026-11-11',
     monthPrice:610, seasonStdName:'ナナシビトの褒章', seasonStdPrice:1220, seasonPremiumName:'ナナシビトの勲章', seasonPremiumPrice:2480,
     url:'https://sdk.hoyoverse.com/payment/hsr/index.html?lang=ja-jp' },
   { id:'zzz', name:'ゼンレスゾーンゼロ', sub:'Zenless Zone Zero', color:'#ff7a3d',
     iconUrl:'https://play-lh.googleusercontent.com/-ZZaqZBQ7EBjH4j0hyHX-0Fu0jUtnoOc-LwydvgQmsXWBZLxyAhxPcmIakzZB7NFurlK4Mj0pbvYe0pHYSuv4p8=s144',
-    month:'インターノット会員権', season:'エリーファンド', seasonDays:42, seasonAnchor:'2026-07-29',
+    month:'インターノット会員権', season:'エリーファンド', seasonDays:42, seasonAnchor:'2026-12-02',
     monthPrice:610, seasonStdName:'成長プラン', seasonStdPrice:1220, seasonPremiumName:'プレミアムプラン', seasonPremiumPrice:2480,
     url:'https://sdk.hoyoverse.com/payment/zenless/index.html?lang=ja-jp' },
 ];
@@ -211,10 +211,11 @@ function load(){
     passes[g.id+'_month']={date:iso(todayMid()), days:30}; // 月パスは毎月更新前提で初期ON
     seasonTier[g.id]='std';
   });
-  return { lead:3, urls, passes, seasonTier };  // passes[key]={date,days} / seasonTier[gid]='std'|'premium'
+  return { lead:3, urls, passes, seasonTier, versionSync:{} };  // passes[key]={date,days} / seasonTier[gid]='std'|'premium'
 }
 function migrate(s){
   if(!s.seasonTier) s.seasonTier={};
+  if(!s.versionSync) s.versionSync={}; // gid → 最後に自動反映した {version,nextUpdate}
   if(!s.urls) s.urls={};
   // 旧デフォルト（コード交換ページ）を新デフォルト（公式トップアップセンター日本語）へ更新
   const OLD_URLS={
@@ -396,9 +397,13 @@ function renderList(){
         daysHtml=`<div class="days ${r.cls}"><div class="n">${txt}</div><div class="u">${unit?'残り'+unit:fmt(r.ref)}</div></div>`;
         const col = r.cls==='s-danger'?'var(--danger)':r.cls==='s-warn'?'var(--warn)':'var(--ok)';
         prog=`<div class="progress"><i style="width:${r.pct}%;background:${col}"></i></div>`;
+        const vs=(state.versionSync||{})[g.id];
+        const synced = t==='season' && vs && vs.nextUpdate===iso(r.ref);
         pdate = t==='month'
           ? `購入 ${fmt(parse(p.date))} → 期限 ${fmt(r.ref)}`
-          : `次回アップデート予定 ${fmt(r.ref)}（周期${p.days}日）`;
+          : synced
+            ? `Ver.${vs.version} → 次回アップデート ${fmt(r.ref)}（自動取得）`
+            : `次回アップデート予定 ${fmt(r.ref)}（周期${p.days}日）`;
         if(r.left<=state.lead){
           const msg = t==='month'
             ? (r.left<0?'期限切れ':'あと'+r.left+'日で期限')
@@ -464,7 +469,7 @@ function openEdit(gid,t){
   document.getElementById('lblExpiry').textContent = t==='month' ? '期限日（自動計算）' : '次回更新日（自動計算）';
   document.getElementById('mHint').innerHTML = t==='month'
     ? '月パスは通常 <b>30日間</b>。購入日を入れると期限を自動計算します。'
-    : '次のアップデート（新バージョン）日を入れると、その日が近づくと通知します。周期は約 <b>42日</b>。アップデート日が過ぎると周期分だけ自動で次回へ繰り上がります。';
+    : '次のアップデート（新バージョン）日を入れると、その日が近づくと通知します。周期は約 <b>42日</b>。アップデート日が過ぎると周期分だけ自動で次回へ繰り上がります。<br>次回アップデート日は新バージョン情報が出るたびに自動で補正されます。';
   syncExpiry();
   openModal('modal');
 }
@@ -555,6 +560,50 @@ function checkNotify(force){
   });
 }
 
+// ===== バージョン期間の自動同期 =====
+// 公式APIはCORSでブラウザから叩けないため、CORS対応の非公式API（api.ennead.cc）のガチャ期間から推定する。
+// 現バージョンの最後のガチャ終了日（JST）の翌日＝次回アップデート日。
+const VERSION_API = { genshin:'genshin', hsr:'starrail', zzz:'zenless' };
+const VERSION_SYNC_INTERVAL = 6*60*60*1000;
+const vkey = v => { const [a,b]=String(v).split('.').map(Number); return a*1000+(b||0); };
+let lastVersionSync = 0;
+
+async function fetchNextUpdate(gid){
+  const r=await fetch(`https://api.ennead.cc/mihoyo/${VERSION_API[gid]}/calendar`,{cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const banners=((await r.json()).banners||[]).filter(b=>b.version&&b.start_time&&b.end_time);
+  const now=Date.now()/1000;
+  const started=banners.filter(b=>b.start_time<=now); // 次バージョンの予告ガチャは除外
+  if(!started.length) return null;
+  const cur=Math.max(...started.map(b=>vkey(b.version)));
+  const curBanners=banners.filter(b=>vkey(b.version)===cur);
+  const end=new Date((Math.max(...curBanners.map(b=>b.end_time))+9*3600)*1000); // JST
+  const next=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth(),end.getUTCDate()+1));
+  const nextUpdate=next.toISOString().slice(0,10);
+  const ahead=(parse(nextUpdate)-logicalToday())/DAY;
+  if(ahead<0||ahead>100) return null; // 古い/不自然なデータは使わない
+  return { version:curBanners[0].version, nextUpdate };
+}
+
+async function syncVersions(){
+  lastVersionSync=Date.now();
+  if(!state.versionSync) state.versionSync={};
+  const results=await Promise.allSettled(GAMES.map(g=>fetchNextUpdate(g.id)));
+  const changed=[]; let dirty=false;
+  GAMES.forEach((g,i)=>{
+    const info=results[i].status==='fulfilled' && results[i].value; if(!info) return;
+    const prev=state.versionSync[g.id];
+    // 前回と同じ情報は再適用しない（ユーザーが手動で直した日付を尊重）
+    if(prev && prev.version===info.version && prev.nextUpdate===info.nextUpdate) return;
+    state.versionSync[g.id]=info; dirty=true;
+    const p=getPass(g.id,'season');
+    if(p && p.date!==info.nextUpdate){ p.date=info.nextUpdate; changed.push(g.name); }
+  });
+  if(!dirty) return;
+  save(); render();
+  if(changed.length) toast(`${changed.join('・')}のアップデート日を更新しました`);
+}
+
 // ===== バックアップ =====
 document.getElementById('btnExport').onclick=()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
@@ -589,9 +638,14 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 })();
 
 render();
-checkNotify();
+syncVersions().finally(()=>checkNotify());
 setInterval(checkNotify, 60*60*1000); // 開いている間は1時間ごとに判定
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ render(); checkNotify(); }});
+setInterval(syncVersions, VERSION_SYNC_INTERVAL);
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) return;
+  render(); checkNotify();
+  if(Date.now()-lastVersionSync>60*60*1000) syncVersions();
+});
 </script>
 </body>
 </html>

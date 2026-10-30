@@ -29,7 +29,10 @@ class MainActivity : ComponentActivity() {
         maybeRequestNotificationPermission()
 
         val repo = PassRepository(this)
-        lifecycleScope.launch { repo.seedIfNeeded() }
+        lifecycleScope.launch {
+            repo.seedIfNeeded()
+            runCatching { VersionSync.sync(repo) }
+        }
         setContent {
             MainScreen(
                 repo = repo,
