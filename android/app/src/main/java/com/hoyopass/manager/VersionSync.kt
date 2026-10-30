@@ -9,19 +9,16 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.net.HttpURLConnection
 import java.net.URL
-import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 
 /**
  * 公式のお知らせAPIから各ゲームの現行バージョンと次回アップデート日（JST）を取得する。
- * 最新バージョンのお知らせのうち最も遅い終了時刻＝次回アップデート（メンテ開始）とみなす。
+ * 現行バージョン（掲載中で最も古いバージョン）のお知らせのうち、
+ * 最も遅い終了時刻＝次回アップデート（メンテ開始）とみなす。
  */
 object VersionSync {
 
-    // 原神は region によって timezone フィールドと実際の時刻がずれるため、整合する os_usa を使う
     private val SOURCES = mapOf(
         "genshin" to "https://sg-hk4e-api.hoyoverse.com/common/hk4e_global/announcement/api/getAnnList" +
             "?game=hk4e&game_biz=hk4e_global&lang=ja-jp&bundle_id=hk4e_global&platform=pc" +
@@ -37,9 +34,13 @@ object VersionSync {
     private val VERSION_RE = Regex("""Ver\.?\s*(\d+)\.(\d+)""")
     private val TAG_RE = Regex("<[^>]+>")
     private val TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-    private val JST = ZoneOffset.ofHours(9)
     /** これより先に終わるお知らせ（常設FAQ等）は無視 */
     private const val MAX_AHEAD_DAYS = 100L
+    /**
+     * end_time のタイムゾーンは timezone フィールドと一致せず取得ごとに変わる（UTC-5〜UTC+9 を観測）。
+     * アップデートは JST 水曜朝（UTC 火曜 22:00 前後）なので、どの表記でも +12時間した日付が JST の更新日になる。
+     */
+    private const val DATE_SHIFT_HOURS = 12L
 
     /** 取得してリポジトリへ反映。失敗したゲームは前回値のまま。 */
     suspend fun sync(repo: PassRepository) {
@@ -64,12 +65,13 @@ object VersionSync {
         }
     }
 
-    private fun extract(body: String, now: Instant = Instant.now()): VersionInfo? {
+    private fun extract(body: String, now: LocalDateTime = LocalDateTime.now()): VersionInfo? {
         val root = Json.parseToJsonElement(body).jsonObject
         if (root["retcode"]?.jsonPrimitive?.intOrNull != 0) return null
         val data = root["data"]?.jsonObject ?: return null
-        val tz = ZoneOffset.ofHours(data["timezone"]?.jsonPrimitive?.intOrNull ?: 8)
-        val limit = now.plus(MAX_AHEAD_DAYS, ChronoUnit.DAYS)
+        // タイムゾーンが不定なので、判定は半日の余裕を持たせた現地時刻の比較で行う
+        val from = now.minusHours(DATE_SHIFT_HOURS)
+        val limit = now.plusDays(MAX_AHEAD_DAYS)
 
         // (major*1000+minor, 終了時刻)
         val found = data["list"]?.jsonArray.orEmpty()
@@ -79,17 +81,18 @@ object VersionSync {
                 val title = ann["title"]?.jsonPrimitive?.content?.replace(TAG_RE, "") ?: return@mapNotNull null
                 val m = VERSION_RE.find(title) ?: return@mapNotNull null
                 val endText = ann["end_time"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                val end = LocalDateTime.parse(endText, TIME_FMT).atOffset(tz).toInstant()
-                if (end.isAfter(now) && end.isBefore(limit)) {
+                val end = LocalDateTime.parse(endText, TIME_FMT)
+                if (end.isAfter(from) && end.isBefore(limit)) {
                     m.groupValues[1].toInt() * 1000 + m.groupValues[2].toInt() to end
                 } else null
             }
         if (found.isEmpty()) return null
-        val latest = found.maxOf { it.first }
-        val end = found.filter { it.first == latest }.maxOf { it.second }
+        // 次バージョンの予告（ショップ更新など）が先行掲載されるため、最も古いバージョン＝現行
+        val current = found.minOf { it.first }
+        val end = found.filter { it.first == current }.maxOf { it.second }
         return VersionInfo(
-            version = "${latest / 1000}.${latest % 1000}",
-            nextUpdate = end.atOffset(JST).toLocalDate().toString(),
+            version = "${current / 1000}.${current % 1000}",
+            nextUpdate = end.plusHours(DATE_SHIFT_HOURS).toLocalDate().toString(),
         )
     }
 }
